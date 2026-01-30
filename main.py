@@ -20,6 +20,10 @@ PRODUCTS = {
         "url": "https://www.lego.com/en-gb/product/time-machine-from-back-to-the-future-77256",
         "last_status": None,
     },
+    "Lightning McQueen": {
+        "url": "https://www.lego.com/en-gb/product/lightning-mcqueen-77255",
+        "last_status": None,
+    },
 }
 
 CHECK_INTERVAL_MINUTES = 1
