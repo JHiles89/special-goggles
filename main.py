@@ -2,7 +2,6 @@ import os
 import aiohttp
 import discord
 from discord.ext import commands, tasks
-from bs4 import BeautifulSoup
 
 # =========================
 # CONFIG
@@ -11,25 +10,32 @@ from bs4 import BeautifulSoup
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 CHANNEL_ID = 1466161739547807795
 
+CHECK_INTERVAL_MINUTES = 1
+COUNTRY_CODE = "GB"
+
+GRAPHQL_URL = "https://www.lego.com/api/graphql/StockAvailability"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (LEGOStockChecker/1.0)",
+    "Content-Type": "application/json",
+}
+
 PRODUCTS = {
     "Tom & Jerry Figures": {
+        "sku": "40793",
         "url": "https://www.lego.com/en-gb/product/tom-jerry-figures-40793",
         "last_status": None,
     },
     "Time Machine (Back to the Future)": {
+        "sku": "77256",
         "url": "https://www.lego.com/en-gb/product/time-machine-from-back-to-the-future-77256",
         "last_status": None,
     },
     "Lightning McQueen": {
+        "sku": "77255",
         "url": "https://www.lego.com/en-gb/product/lightning-mcqueen-77255",
         "last_status": None,
     },
-}
-
-CHECK_INTERVAL_MINUTES = 1
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (LEGOStockChecker/1.0)"
 }
 
 # =========================
@@ -37,13 +43,41 @@ HEADERS = {
 # =========================
 
 intents = discord.Intents.default()
-intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
-    check_stock.start()
+    if not check_stock.is_running():
+        check_stock.start()
+
+# =========================
+# LEGO STOCK API
+# =========================
+
+async def fetch_stock_status(session, sku):
+    payload = {
+        "query": """
+        query StockAvailability($sku: String!, $country: String!) {
+          product(sku: $sku) {
+            availability(country: $country) {
+              available
+              availabilityStatus
+            }
+          }
+        }
+        """,
+        "variables": {
+            "sku": sku,
+            "country": COUNTRY_CODE,
+        },
+    }
+
+    async with session.post(GRAPHQL_URL, json=payload, timeout=10) as response:
+        data = await response.json()
+
+    availability = data["data"]["product"]["availability"]
+    return availability["available"]
 
 # =========================
 # STOCK CHECK TASK
@@ -54,30 +88,20 @@ async def check_stock():
     try:
         async with aiohttp.ClientSession(headers=HEADERS) as session:
             for product_name, product in PRODUCTS.items():
+                sku = product["sku"]
                 url = product["url"]
                 last_status = product["last_status"]
 
-                async with session.get(url, timeout=10) as response:
-                    html = await response.text()
+                is_available = await fetch_stock_status(session, sku)
+                current_status = "available" if is_available else "unavailable"
 
-                soup = BeautifulSoup(html, "html.parser")
-
-                add_to_bag_button = soup.select_one(
-                    "button[data-test='add-to-bag']"
-                )
-
-                if add_to_bag_button and not add_to_bag_button.has_attr("disabled"):
-                    current_status = "available"
-                else:
-                    current_status = "unavailable"
-
-                # First run: set baseline only
+                # First run: establish baseline
                 if last_status is None:
                     product["last_status"] = current_status
                     print(f"Initial state for {product_name}: {current_status}")
                     continue
 
-                # Log status changes
+                # Log any change
                 if current_status != last_status:
                     print(
                         f"{product_name} stock changed: "
@@ -86,7 +110,7 @@ async def check_stock():
 
                 # Alert only when it becomes available
                 if current_status == "available" and last_status != "available":
-                    channel = bot.get_channel(CHANNEL_ID)
+                    channel = await bot.get_channel(CHANNEL_ID)
                     if channel:
                         await channel.send(
                             "🚨 **LEGO ALERT!** 🚨\n"
@@ -98,6 +122,8 @@ async def check_stock():
 
     except Exception as e:
         print(f"❌ Error checking stock: {e}")
+
+print(f"Sending alert for {product_name} to channel {CHANNEL_ID}")
 
 
 # =========================
