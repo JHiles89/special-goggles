@@ -123,11 +123,9 @@ async def check_stock():
     except Exception as e:
         print(f"❌ Error checking stock: {e}")
 
-print(f"Sending alert for {product_name} to channel {CHANNEL_ID}")
-
-
 # =========================
 # RUN BOT
 # =========================
 
 bot.run(BOT_TOKEN)
+
