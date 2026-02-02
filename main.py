@@ -82,10 +82,21 @@ async def fetch_stock_status(session, sku):
     }
 
     async with session.post(GRAPHQL_URL, json=payload, timeout=10) as response:
+        if response.status != 200:
+            raise RuntimeError(f"LEGO API HTTP {response.status}")
+
         data = await response.json()
 
-    availability = data["data"]["product"]["availability"]
-    return availability["available"]
+    # 🚨 Defensive checks
+    if "data" not in data:
+        raise RuntimeError(f"Invalid LEGO response: {data}")
+
+    product = data["data"].get("product")
+    if not product or not product.get("availability"):
+        raise RuntimeError(f"No availability data for SKU {sku}")
+
+    return product["availability"]["available"]
+
 
 # =========================
 # STOCK CHECK TASK
@@ -136,5 +147,6 @@ async def check_stock():
 # =========================
 
 bot.run(BOT_TOKEN)
+
 
 
