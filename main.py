@@ -10,7 +10,7 @@ from discord.ext import commands, tasks
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 CHANNEL_ID = 1466161739547807795
 
-CHECK_INTERVAL_MINUTES = 1
+CHECK_INTERVAL_MINUTES = 2
 COUNTRY_CODE = "GB"
 
 GRAPHQL_URL = "https://www.lego.com/api/graphql/StockAvailability"
@@ -147,6 +147,7 @@ async def check_stock():
 # =========================
 
 bot.run(BOT_TOKEN)
+
 
 
 
