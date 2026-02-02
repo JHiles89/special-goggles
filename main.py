@@ -16,8 +16,16 @@ COUNTRY_CODE = "GB"
 GRAPHQL_URL = "https://www.lego.com/api/graphql/StockAvailability"
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (LEGOStockChecker/1.0)",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/121.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json",
+    "Accept-Language": "en-GB,en;q=0.9",
     "Content-Type": "application/json",
+    "Origin": "https://www.lego.com",
+    "Referer": "https://www.lego.com/",
 }
 
 PRODUCTS = {
@@ -128,4 +136,5 @@ async def check_stock():
 # =========================
 
 bot.run(BOT_TOKEN)
+
 
